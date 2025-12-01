@@ -293,6 +293,63 @@ TAREAS:
 });
 
 /* ======================================================
+   🔴 5️⃣ ENDPOINT: GENERADOR DE TÍTULOS YOUTUBE
+====================================================== */
+app.post("/api/titulos", async (req, res) => {
+  const { topic, style } = req.body;
+
+  if (!topic) {
+    return res.status(400).json({ error: "Falta el tema principal." });
+  }
+
+  try {
+    const prompt = `
+Eres un experto en viralidad de YouTube.
+
+Genera EXACTAMENTE 10 títulos únicos, muy atractivos y optimizados para CTR.
+Tema del vídeo: "${topic}"
+Estilo solicitado: "${style}"
+
+Entrégalos así:
+
+TITULOS:
+1. ...
+2. ...
+3. ...
+4. ...
+5. ...
+6. ...
+7. ...
+8. ...
+9. ...
+10. ...
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.95,
+      max_tokens: 650,
+    });
+
+    const content = completion.choices[0].message.content;
+
+    const block = content.match(/TITULOS:\s*([\s\S]*)/i)?.[1] || content;
+
+    const titles = block
+      .split("\n")
+      .map(t => t.replace(/^\d+\.\s*/, "").trim())
+      .filter(t => t.length > 3);
+
+    res.json({ titles });
+
+  } catch (error) {
+    console.error("❌ Error generando títulos:", error);
+    res.status(500).json({ error: "Error interno generando títulos." });
+  }
+});
+
+/* ======================================================
    🚀 SERVIDOR
 ====================================================== */
 
