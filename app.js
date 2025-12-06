@@ -352,7 +352,7 @@ TITULOS:
 });
 
 /* ======================================================
-   🟣 6️⃣ ENDPOINT FINAL COMPATIBLE — ANIME FINDER
+   🟣 6️⃣ ENDPOINT FINAL — ANIME FINDER (CORREGIDO)
 ====================================================== */
 app.post("/api/animefinder", async (req, res) => {
   const { image, notes } = req.body;
@@ -375,12 +375,7 @@ Identifica a partir de la imagen:
 5. Nivel de confianza (0 a 1).
 6. Información extra basada en la escena.
 
-⚠ IMPORTANTE:
-- Nunca devuelvas "No identificado".
-- Si no estás seguro, da opciones probables.
-- La respuesta debe ser SIEMPRE un JSON válido.
-
-Formato EXACTO:
+La respuesta DEBE ser JSON válido.
 
 {
   "animeTitle": "",
@@ -402,16 +397,18 @@ Notas del usuario: "${notes || "Ninguna"}"
           content: [
             { type: "text", text: prompt },
 
-            // 🔥 FORMATO CORRECTO PARA TU MODELO
-            { 
+            // 🔥 FORMATO CORRECTO PARA EL SDK NUEVO
+            {
               type: "image_url",
-              image_url: image     // <-- aquí va tu base64 tal cual
+              image_url: {
+                url: image       // <--- AQUÍ VA TU BASE64 COMPLETO
+              }
             }
           ]
         }
       ],
       temperature: 0.5,
-      max_tokens: 600
+      max_tokens: 650
     });
 
     const respuesta = completion.choices[0].message.content.trim();
@@ -420,24 +417,24 @@ Notas del usuario: "${notes || "Ninguna"}"
     try {
       json = JSON.parse(respuesta);
     } catch (err) {
-      console.error("❌ Error parseando JSON:", err, respuesta);
+      console.error("❌ Error parseando respuesta JSON:", err, respuesta);
       return res.status(200).json({
         animeTitle: "Posibles candidatos",
         characterName: "",
         episode: "",
         whereToWatch: "Crunchyroll / Netflix",
-        confidence: 0,
-        extraInfo: "El modelo respondió, pero no en JSON válido."
+        confidence: 0.0,
+        extraInfo: "La IA respondió pero no en formato JSON válido."
       });
     }
 
     res.json(json);
 
   } catch (error) {
-    console.error("❌ Error analizando imagen AnimeFinder:", error);
+    console.error("❌ ERROR REAL:", error.response?.data || error.message || error);
     res.status(500).json({
       error: "Hubo un error al analizar la imagen.",
-      details: error.message || error
+      details: error.response?.data || error.message || error
     });
   }
 });
