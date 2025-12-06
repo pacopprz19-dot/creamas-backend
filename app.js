@@ -350,6 +350,88 @@ TITULOS:
 });
 
 /* ======================================================
+   🟣 6️⃣ ENDPOINT: ANIME FINDER (Visión IA)
+====================================================== */
+app.post("/api/animefinder", async (req, res) => {
+  const { image, notes, filename } = req.body;
+
+  if (!image) {
+    return res.status(400).json({ error: "No se recibió ninguna imagen para analizar." });
+  }
+
+  try {
+    const prompt = `
+Eres un experto en anime. Tu tarea es analizar una captura de pantalla y determinar:
+
+1. El nombre del anime.
+2. El personaje principal que aparece.
+3. El episodio o escena aproximada (si es reconocible).
+4. Dónde suele poder verse ese anime legalmente (Crunchyroll, Netflix, etc.).
+5. Una estimación del nivel de confianza (0 a 1).
+6. Información extra útil sobre la escena, si procede.
+
+IMPORTANTE:
+- NO inventes información que no pueda deducirse del estilo o escena.
+- Si no estás seguro del episodio, da solo una estimación general.
+- Tu respuesta debe venir EXACTAMENTE en este formato JSON:
+
+{
+  "animeTitle": "",
+  "characterName": "",
+  "episode": "",
+  "whereToWatch": "",
+  "confidence": 0,
+  "extraInfo": ""
+}
+
+Notas adicionales del usuario: "${notes || "Ninguna"}"
+`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: image }
+          ]
+        }
+      ],
+      temperature: 0.4,
+      max_tokens: 500
+    });
+
+    let respuesta = completion.choices[0].message.content.trim();
+
+    // Intentamos parsear JSON
+    let json;
+    try {
+      json = JSON.parse(respuesta);
+    } catch (err) {
+      console.error("❌ Error al parsear JSON generado:", err, respuesta);
+      return res.status(200).json({
+        animeTitle: "No identificado",
+        characterName: "",
+        episode: "",
+        whereToWatch: "",
+        confidence: 0,
+        extraInfo: "No se pudo interpretar correctamente la imagen."
+      });
+    }
+
+    res.json(json);
+
+  } catch (error) {
+    console.error("❌ Error analizando imagen AnimeFinder:", error);
+    res.status(500).json({
+      error: "Hubo un error al analizar la imagen.",
+      details: error.message || error
+    });
+  }
+});
+
+/* ======================================================
    🚀 SERVIDOR
 ====================================================== */
 
