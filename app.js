@@ -355,7 +355,7 @@ TITULOS:
    🟣 6️⃣ ENDPOINT: ANIME FINDER (Visión IA)
 ====================================================== */
 app.post("/api/animefinder", async (req, res) => {
-  const { image, notes, filename } = req.body;
+  const { image, notes } = req.body;
 
   if (!image) {
     return res.status(400).json({ error: "No se recibió ninguna imagen para analizar." });
@@ -363,20 +363,16 @@ app.post("/api/animefinder", async (req, res) => {
 
   try {
     const prompt = `
-Eres un experto en anime. Tu tarea es analizar una captura de pantalla y determinar:
+Eres un experto en anime. Analiza la imagen proporcionada y devuelve:
 
-1. El nombre del anime.
-2. El personaje principal que aparece.
-3. El episodio o escena aproximada (si es reconocible).
-4. Dónde suele poder verse ese anime legalmente (Crunchyroll, Netflix, etc.).
-5. Una estimación del nivel de confianza (0 a 1).
-6. Información extra útil sobre la escena, si procede.
+1. Nombre del anime.
+2. Personaje principal visible.
+3. Episodio aproximado (si es reconocible).
+4. Plataformas donde suele verse legalmente (Crunchyroll, Netflix, etc.).
+5. Nivel de confianza (0 a 1).
+6. Información extra relevante.
 
-IMPORTANTE:
-- NO inventes información que no pueda deducirse del estilo o escena.
-- Si no estás seguro del episodio, da solo una estimación general.
-- Tu respuesta debe venir EXACTAMENTE en este formato JSON:
-
+Formato de respuesta OBLIGATORIO:
 {
   "animeTitle": "",
   "characterName": "",
@@ -386,8 +382,8 @@ IMPORTANTE:
   "extraInfo": ""
 }
 
-Notas adicionales del usuario: "${notes || "Ninguna"}"
-`;
+Notas del usuario: "${notes || "Ninguna"}"
+    `;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -396,7 +392,12 @@ Notas adicionales del usuario: "${notes || "Ninguna"}"
           role: "user",
           content: [
             { type: "text", text: prompt },
-            { type: "image_url", image_url: image }
+
+            // NUEVO FORMATO DE IMAGEN GPT-4O
+            { 
+              type: "image_url",
+              image_url: { url: image } 
+            }
           ]
         }
       ],
@@ -404,21 +405,20 @@ Notas adicionales del usuario: "${notes || "Ninguna"}"
       max_tokens: 500
     });
 
-    let respuesta = completion.choices[0].message.content.trim();
+    const respuesta = completion.choices[0].message.content.trim();
 
-    // Intentamos parsear JSON
     let json;
     try {
       json = JSON.parse(respuesta);
     } catch (err) {
-      console.error("❌ Error al parsear JSON generado:", err, respuesta);
+      console.error("❌ Error parseando JSON:", err, respuesta);
       return res.status(200).json({
         animeTitle: "No identificado",
         characterName: "",
         episode: "",
         whereToWatch: "",
         confidence: 0,
-        extraInfo: "No se pudo interpretar correctamente la imagen."
+        extraInfo: "El modelo no devolvió JSON válido."
       });
     }
 
@@ -432,6 +432,7 @@ Notas adicionales del usuario: "${notes || "Ninguna"}"
     });
   }
 });
+
 
 /* ======================================================
    🚀 SERVIDOR
