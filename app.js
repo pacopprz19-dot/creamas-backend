@@ -363,27 +363,24 @@ app.post("/api/animefinder", async (req, res) => {
 
   try {
     const prompt = `
-Eres un experto extremadamente especializado en ANIME. Reconoces estilos, trazos,
-uniformes, técnicas de animación, colores, fondos y personajes de miles de series.
+Eres un motor avanzado de reconocimiento de ANIME. 
+Tu misión es identificar el anime analizando exclusivamente la imagen proporcionada.
 
-Identifica a partir de la imagen:
+INSTRUCCIONES IMPORTANTES:
+- Tu respuesta debe ser SIEMPRE JSON válido.
+- No salgas del formato JSON bajo ninguna circunstancia.
+- No incluyas texto fuera del JSON.
+- Si no estás seguro, ofrece las mejores opciones probables sin inventar información imposible.
 
-1. Anime más probable (puedes dar 2–3 candidatos).
-2. Personaje visible.
-3. Arco narrativo o episodio aproximado (si aplica).
-4. Plataformas donde suele verse (Crunchyroll, Netflix, etc.).
-5. Nivel de confianza (0 a 1).
-6. Información extra basada en la escena.
-
-La respuesta DEBE ser JSON válido.
+Analiza la imagen y devuelve:
 
 {
-  "animeTitle": "",
-  "characterName": "",
-  "episode": "",
-  "whereToWatch": "",
+  "animeTitle": "Nombre del anime o lista de 2-3 posibilidades",
+  "characterName": "Personaje visible (si aplica)",
+  "episode": "Episodio o arco aproximado (si puede saberse)",
+  "whereToWatch": "Plataformas donde suele estar ese anime (Crunchyroll, Netflix, etc.)",
   "confidence": 0.0,
-  "extraInfo": ""
+  "extraInfo": "Detalles relevantes sobre estilo, colores, uniforme, animación, estudio, etc."
 }
 
 Notas del usuario: "${notes || "Ninguna"}"
@@ -391,50 +388,39 @@ Notas del usuario: "${notes || "Ninguna"}"
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "user",
           content: [
             { type: "text", text: prompt },
-
-            // 🔥 FORMATO CORRECTO PARA EL SDK NUEVO
             {
               type: "image_url",
-              image_url: {
-                url: image       // <--- AQUÍ VA TU BASE64 COMPLETO
-              }
+              image_url: { url: image }
             }
           ]
         }
       ],
-      temperature: 0.5,
-      max_tokens: 650
+      temperature: 0.3,
+      max_tokens: 900,
+      presence_penalty: 0,
+      frequency_penalty: 0
     });
 
-    const respuesta = completion.choices[0].message.content.trim();
+    // Parseo seguro del JSON que devuelve OpenAI
+    const json = JSON.parse(completion.choices[0].message.content);
 
-    let json;
-    try {
-      json = JSON.parse(respuesta);
-    } catch (err) {
-      console.error("❌ Error parseando respuesta JSON:", err, respuesta);
-      return res.status(200).json({
-        animeTitle: "Posibles candidatos",
-        characterName: "",
-        episode: "",
-        whereToWatch: "Crunchyroll / Netflix",
-        confidence: 0.0,
-        extraInfo: "La IA respondió pero no en formato JSON válido."
-      });
-    }
-
-    res.json(json);
+    return res.json(json);
 
   } catch (error) {
     console.error("❌ ERROR REAL:", error.response?.data || error.message || error);
-    res.status(500).json({
-      error: "Hubo un error al analizar la imagen.",
-      details: error.response?.data || error.message || error
+    return res.status(500).json({
+      animeTitle: "Posibles candidatos",
+      characterName: "No identificado",
+      episode: "",
+      whereToWatch: "Crunchyroll / Netflix",
+      confidence: 0,
+      extraInfo: "La IA respondió con error o el JSON no era válido."
     });
   }
 });
