@@ -362,29 +362,42 @@ app.post("/api/animefinder", async (req, res) => {
   }
 
   try {
-    const prompt = `
-Eres un motor avanzado de reconocimiento de ANIME. 
-Tu misión es identificar el anime analizando exclusivamente la imagen proporcionada.
+const prompt = `
+Eres un sistema experto en reconocimiento de ANIME, altamente preciso. 
+Analizas imágenes con extrema atención al detalle y conoces:
 
-INSTRUCCIONES IMPORTANTES:
-- Tu respuesta debe ser SIEMPRE JSON válido.
-- No salgas del formato JSON bajo ninguna circunstancia.
-- No incluyas texto fuera del JSON.
-- Si no estás seguro, ofrece las mejores opciones probables sin inventar información imposible.
+- Estilos de dibujo por estudio (MAPPA, Pierrot, Ufotable, Toei, Bones, Sunrise, etc.)
+- Cambios de animación según temporada y arco
+- Outfits, peinados, expresiones y rasgos faciales característicos
+- Símbolos, headbands, uniformes, colores y props de personajes
+- Arcos narrativos populares y episodios aproximados según escenas conocidas
 
-Analiza la imagen y devuelve:
+TU MISIÓN:
+Identificar el ANIME, el PERSONAJE, la VERSIÓN DEL PERSONAJE y el ARCO/EPISODIO aproximado.
+
+DIRECTRICES CRÍTICAS:
+- Tu respuesta DEBE ser SIEMPRE JSON estrictamente válido.
+- SIN texto fuera del JSON.
+- Si no estás seguro, da 2–3 opciones altamente probables, pero razonadas.
+- NUNCA devuelvas “No identificado”. Da la mejor predicción posible.
+- Usa siempre un nivel de confianza (0 a 1).
+- Basar tus respuestas EN LA IMAGEN, NO en suposiciones.
+
+Devuelve EXACTAMENTE este JSON:
 
 {
-  "animeTitle": "Nombre del anime o lista de 2-3 posibilidades",
-  "characterName": "Personaje visible (si aplica)",
-  "episode": "Episodio o arco aproximado (si puede saberse)",
-  "whereToWatch": "Plataformas donde suele estar ese anime (Crunchyroll, Netflix, etc.)",
+  "animeTitle": "Anime más probable o lista de opciones probables",
+  "characterName": "Nombre del personaje visible",
+  "characterVersion": "Descripción de la versión (edad, outfit, arco, transformación, uniforme, etc.)",
+  "episode": "Episodio o arco aproximado basándote en colores, fondo, expresión y contexto visual",
+  "whereToWatch": "Plataformas donde suele estar disponible (Crunchyroll, Netflix, etc.)",
   "confidence": 0.0,
-  "extraInfo": "Detalles relevantes sobre estilo, colores, uniforme, animación, estudio, etc."
+  "extraInfo": "Detalles técnicos del estilo visual que justifican tu predicción"
 }
 
 Notas del usuario: "${notes || "Ninguna"}"
 `;
+
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
