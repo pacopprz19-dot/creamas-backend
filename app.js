@@ -352,7 +352,7 @@ TITULOS:
 });
 
 /* ======================================================
-   🟣 6️⃣ ENDPOINT FINAL — ANIME FINDER (Visión IA optimizada)
+   🟣 6️⃣ ENDPOINT FINAL COMPATIBLE — ANIME FINDER
 ====================================================== */
 app.post("/api/animefinder", async (req, res) => {
   const { image, notes } = req.body;
@@ -363,50 +363,24 @@ app.post("/api/animefinder", async (req, res) => {
 
   try {
     const prompt = `
-Eres un experto MUY especializado en ANIME. Has visto miles de series japonesas, incluyendo:
+Eres un experto extremadamente especializado en ANIME. Reconoces estilos, trazos,
+uniformes, técnicas de animación, colores, fondos y personajes de miles de series.
 
-- Jujutsu Kaisen
-- Naruto / Shippuden / Boruto
-- Bleach
-- Demon Slayer (Kimetsu no Yaiba)
-- Attack on Titan
-- Tokyo Ghoul
-- One Piece
-- Chainsaw Man
-- My Hero Academia
-- Solo Leveling
-- Haikyuu!!
-- Fullmetal Alchemist Brotherhood
-- Death Note
-- Black Clover
-- Fairy Tail
-- Y cientos más, incluyendo anime clásico y moderno.
+Identifica a partir de la imagen:
 
-Reconoces:
-- estilos de dibujo,
-- uniformes escolares,
-- técnicas especiales,
-- colores de pelo,
-- composición de escenas,
-- animaciones de MAPPA, Ufotable, Pierrot, Madhouse, Trigger,
-- expresiones típicas de personajes,
-- fondos y atmósferas de cada anime.
+1. Anime más probable (puedes dar 2–3 candidatos).
+2. Personaje visible.
+3. Arco narrativo o episodio aproximado (si aplica).
+4. Plataformas donde suele verse (Crunchyroll, Netflix, etc.).
+5. Nivel de confianza (0 a 1).
+6. Información extra basada en la escena.
 
-Tu tarea es analizar la imagen enviada y devolver:
+⚠ IMPORTANTE:
+- Nunca devuelvas "No identificado".
+- Si no estás seguro, da opciones probables.
+- La respuesta debe ser SIEMPRE un JSON válido.
 
-1. 📌 *Anime más probable* (puedes dar 2–3 candidatos si no estás 100% seguro).
-2. 👤 *Personaje visible o personajes probables*.
-3. 🎬 *Episodio o arco narrativo aproximado*.
-4. 📺 *Dónde se puede ver legalmente* (Crunchyroll, Netflix, etc.).
-5. 📊 *Confianza entre 0 y 1*.
-6. 📝 *Información extra útil o pistas visuales*.
-
-⚠ IMPORTANTE
-- No devuelvas “No identificado”.
-- Si no estás seguro, da las opciones MÁS probables.
-- SIEMPRE devuelve un JSON válido (nunca texto fuera del JSON).
-
-Formato EXACTO de respuesta:
+Formato EXACTO:
 
 {
   "animeTitle": "",
@@ -420,25 +394,24 @@ Formato EXACTO de respuesta:
 Notas del usuario: "${notes || "Ninguna"}"
 `;
 
-    // 👇 NUEVO FORMATO DE IMAGEN para GPT-4o / GPT-4o-mini
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",   // 🔥 MUCHÍSIMO MEJOR PARA ANIME
+      model: "gpt-4o",
       messages: [
         {
           role: "user",
           content: [
             { type: "text", text: prompt },
 
-            // NUEVO FORMATO GPT-4o
-            {
-              type: "input_image",
-              input_image: image   // base64
+            // 🔥 FORMATO CORRECTO PARA TU MODELO
+            { 
+              type: "image_url",
+              image_url: image     // <-- aquí va tu base64 tal cual
             }
           ]
         }
       ],
-      temperature: 0.4,
-      max_tokens: 500
+      temperature: 0.5,
+      max_tokens: 600
     });
 
     const respuesta = completion.choices[0].message.content.trim();
@@ -447,16 +420,14 @@ Notas del usuario: "${notes || "Ninguna"}"
     try {
       json = JSON.parse(respuesta);
     } catch (err) {
-      console.error("❌ Error parseando JSON generado:", err, respuesta);
-
+      console.error("❌ Error parseando JSON:", err, respuesta);
       return res.status(200).json({
-        animeTitle: "Probablemente uno de estos:",
+        animeTitle: "Posibles candidatos",
         characterName: "",
         episode: "",
-        whereToWatch: "Crunchyroll, Netflix u otras plataformas populares de anime.",
-        confidence: 0.0,
-        extraInfo:
-          "No se pudo generar un JSON válido. El modelo envió texto fuera del formato JSON."
+        whereToWatch: "Crunchyroll / Netflix",
+        confidence: 0,
+        extraInfo: "El modelo respondió, pero no en JSON válido."
       });
     }
 
