@@ -352,7 +352,7 @@ TITULOS:
 });
 
 /* ======================================================
-   🟣 6️⃣ ENDPOINT: ANIME FINDER (Visión IA)
+   🟣 6️⃣ ENDPOINT FINAL — ANIME FINDER (Visión IA optimizada)
 ====================================================== */
 app.post("/api/animefinder", async (req, res) => {
   const { image, notes } = req.body;
@@ -363,40 +363,76 @@ app.post("/api/animefinder", async (req, res) => {
 
   try {
     const prompt = `
-Eres un experto en anime. Analiza la imagen proporcionada y devuelve:
+Eres un experto MUY especializado en ANIME. Has visto miles de series japonesas, incluyendo:
 
-1. Nombre del anime.
-2. Personaje principal visible.
-3. Episodio aproximado (si es reconocible).
-4. Plataformas donde suele verse legalmente (Crunchyroll, Netflix, etc.).
-5. Nivel de confianza (0 a 1).
-6. Información extra relevante.
+- Jujutsu Kaisen
+- Naruto / Shippuden / Boruto
+- Bleach
+- Demon Slayer (Kimetsu no Yaiba)
+- Attack on Titan
+- Tokyo Ghoul
+- One Piece
+- Chainsaw Man
+- My Hero Academia
+- Solo Leveling
+- Haikyuu!!
+- Fullmetal Alchemist Brotherhood
+- Death Note
+- Black Clover
+- Fairy Tail
+- Y cientos más, incluyendo anime clásico y moderno.
 
-Formato de respuesta OBLIGATORIO:
+Reconoces:
+- estilos de dibujo,
+- uniformes escolares,
+- técnicas especiales,
+- colores de pelo,
+- composición de escenas,
+- animaciones de MAPPA, Ufotable, Pierrot, Madhouse, Trigger,
+- expresiones típicas de personajes,
+- fondos y atmósferas de cada anime.
+
+Tu tarea es analizar la imagen enviada y devolver:
+
+1. 📌 *Anime más probable* (puedes dar 2–3 candidatos si no estás 100% seguro).
+2. 👤 *Personaje visible o personajes probables*.
+3. 🎬 *Episodio o arco narrativo aproximado*.
+4. 📺 *Dónde se puede ver legalmente* (Crunchyroll, Netflix, etc.).
+5. 📊 *Confianza entre 0 y 1*.
+6. 📝 *Información extra útil o pistas visuales*.
+
+⚠ IMPORTANTE
+- No devuelvas “No identificado”.
+- Si no estás seguro, da las opciones MÁS probables.
+- SIEMPRE devuelve un JSON válido (nunca texto fuera del JSON).
+
+Formato EXACTO de respuesta:
+
 {
   "animeTitle": "",
   "characterName": "",
   "episode": "",
   "whereToWatch": "",
-  "confidence": 0,
+  "confidence": 0.0,
   "extraInfo": ""
 }
 
 Notas del usuario: "${notes || "Ninguna"}"
-    `;
+`;
 
+    // 👇 NUEVO FORMATO DE IMAGEN para GPT-4o / GPT-4o-mini
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",   // 🔥 MUCHÍSIMO MEJOR PARA ANIME
       messages: [
         {
           role: "user",
           content: [
             { type: "text", text: prompt },
 
-            // NUEVO FORMATO DE IMAGEN GPT-4O
-            { 
-              type: "image_url",
-              image_url: { url: image } 
+            // NUEVO FORMATO GPT-4o
+            {
+              type: "input_image",
+              input_image: image   // base64
             }
           ]
         }
@@ -411,14 +447,16 @@ Notas del usuario: "${notes || "Ninguna"}"
     try {
       json = JSON.parse(respuesta);
     } catch (err) {
-      console.error("❌ Error parseando JSON:", err, respuesta);
+      console.error("❌ Error parseando JSON generado:", err, respuesta);
+
       return res.status(200).json({
-        animeTitle: "No identificado",
+        animeTitle: "Probablemente uno de estos:",
         characterName: "",
         episode: "",
-        whereToWatch: "",
-        confidence: 0,
-        extraInfo: "El modelo no devolvió JSON válido."
+        whereToWatch: "Crunchyroll, Netflix u otras plataformas populares de anime.",
+        confidence: 0.0,
+        extraInfo:
+          "No se pudo generar un JSON válido. El modelo envió texto fuera del formato JSON."
       });
     }
 
@@ -432,6 +470,7 @@ Notas del usuario: "${notes || "Ninguna"}"
     });
   }
 });
+
 
 
 /* ======================================================
